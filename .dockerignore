@@ -1,0 +1,32 @@
+# Keep the build context small and the build reproducible.
+.git
+.gitignore
+.idea
+*.md
+doc/
+
+# Any prior in-tree build artifacts (we build from a clean tree in the image).
+*.o
+*.lo
+*.la
+*.a
+.libs/
+.deps/
+src/bitcoind
+src/bitcoin-cli
+src/bitcoin-tx
+src/qt/bitcoin-qt
+src/test/test_bitcoin
+config.log
+config.status
+Makefile
+autom4te.cache/
+
+# Downloaded dependency sources (rebuilt inside the image).
+depends/work/
+depends/built/
+depends/sources/
+depends/x86_64*/
+depends/i686*/
+depends/arm*/
+depends/aarch64*/

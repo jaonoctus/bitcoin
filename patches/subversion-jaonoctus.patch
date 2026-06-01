@@ -1,0 +1,22 @@
+Customize the P2P user-agent (subversion) to /Satoshi:0.12.1/jaonoctus/.
+
+FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, ...) returns "/Satoshi:0.12.1/"
+(trailing slash included). Appending a second BIP14 stack segment
+"jaonoctus/" yields the desired "/Satoshi:0.12.1/jaonoctus/". The append
+happens before the MAX_SUBVERSION_LENGTH check so the result is still
+validated. Note: any -uacomment is still inserted by FormatSubVersion as
+"/Satoshi:0.12.1(comment)/jaonoctus/".
+
+diff --git src/init.cpp src/init.cpp
+index 0b3234566a..eb7536b857 100644
+--- src/init.cpp
++++ src/init.cpp
+@@ -1142,6 +1142,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
+         uacomments.push_back(SanitizeString(cmt, SAFE_CHARS_UA_COMMENT));
+     }
+     strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments);
++    // Advertise this build as /Satoshi:0.12.1/jaonoctus/ (BIP14 stacked segment).
++    strSubVersion += "jaonoctus/";
+     if (strSubVersion.size() > MAX_SUBVERSION_LENGTH) {
+         return InitError(strprintf(_("Total length of network version string (%i) exceeds maximum length (%i). Reduce the number or size of uacomments."),
+             strSubVersion.size(), MAX_SUBVERSION_LENGTH));
