@@ -93,6 +93,9 @@ RUN set -eux; \
     patch -p0 < patches/cve-2020-14198-banlist-bound.patch; \
     patch -p0 < patches/cve-2021-31876-rbf-inherited-signaling.patch; \
     patch -p0 < patches/cve-2024-52915-inv-getheaders-flood.patch; \
+    patch -p0 < patches/tcp-urgent-data-oom.patch; \
+    patch -p0 < patches/cve-2024-52912-timestamp-overflow.patch; \
+    patch -p0 < patches/cve-2024-52919-addr-rate-limit.patch; \
     # Customization (non-security): advertise /Satoshi:0.12.1/jaonoctus/.
     patch -p0 < patches/subversion-jaonoctus.patch; \
     ./autogen.sh; \

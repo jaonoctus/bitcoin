@@ -1,0 +1,52 @@
+TCP urgent data OOM: a paused peer bypasses the receive flood limit.
+
+Disclosed 2026-10-28 ("Unbounded memory growth through TCP urgent data on
+non-Linux systems", fixed upstream in PR #36665, Bitcoin Core 29.5, 30.4,
+31.2 and 32.1). No CVE assigned at time of writing.
+
+ThreadSocketHandler() stops select()ing a peer's socket for reading once its
+receive queue exceeds ReceiveFloodSize(), but it always added the socket to
+fdsetError. Any socket in fdsetError is then serviced with recv():
+
+    if (FD_ISSET(pnode->hSocket, &fdsetRecv) || FD_ISSET(pnode->hSocket, &fdsetError))
+
+TCP urgent (out-of-band) data raises the exceptional condition, so a peer can
+keep sending urgent bytes to force reads while it is supposed to be paused,
+growing vRecvMsg without bound until the node is OOM-killed.
+
+Upstream says Linux is unaffected because modern Core uses poll() there.
+0.12.1 uses select() on every platform, including Linux, so this image is
+affected.
+
+Fix: only watch for exceptional conditions when the socket is also being
+watched for reading. Sockets that are draining their send queue or paused for
+receive are left out of fdsetError, so they can no longer trigger a recv().
+
+diff --git src/net.cpp src/net.cpp
+index 7baad38209..28d460aa7d 100644
+--- src/net.cpp
++++ src/net.cpp
+@@ -1135,7 +1135,6 @@ void ThreadSocketHandler()
+             {
+                 if (pnode->hSocket == INVALID_SOCKET)
+                     continue;
+-                FD_SET(pnode->hSocket, &fdsetError);
+                 hSocketMax = max(hSocketMax, pnode->hSocket);
+                 have_fds = true;
+ 
+@@ -1165,8 +1164,14 @@ void ThreadSocketHandler()
+                     TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
+                     if (lockRecv && (
+                         pnode->vRecvMsg.empty() || !pnode->vRecvMsg.front().complete() ||
+-                        pnode->GetTotalRecvSize() <= ReceiveFloodSize()))
++                        pnode->GetTotalRecvSize() <= ReceiveFloodSize())) {
+                         FD_SET(pnode->hSocket, &fdsetRecv);
++                        // TCP urgent data OOM: only watch for exceptional
++                        // conditions while receiving is allowed. An exceptional
++                        // condition triggers recv() below, so watching it while
++                        // reads are paused let a peer bypass ReceiveFloodSize().
++                        FD_SET(pnode->hSocket, &fdsetError);
++                    }
+                 }
+             }
+         }
